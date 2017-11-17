@@ -201,7 +201,7 @@ Mo(X) = \max_{x}   f(x)
 
 *En el gráfico anterior podemos ver como dicho valor es 5.*
 
-*Otra forma de obtener dicho dato es:*
+*Otra forma de obtener el dato es:*
 
 ```{r}
 #definimos un intervalo para la representación
