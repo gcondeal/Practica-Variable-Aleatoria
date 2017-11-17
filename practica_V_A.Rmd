@@ -5,6 +5,18 @@ date: "noviembre de 2017"
 output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+maxima <- function(exp){
+  callmaxima <- paste("maxima","--very-quiet","--batch-string","'tex(",exp,")$","sprint(",exp,")$'")
+  result = system(callmaxima, intern = TRUE)
+  # Devolvemos el ultimo elemento de la lista que nos devuelve maxima, que es el resultado
+  return(result)
+}
+```
+
+
 # Descuentos
 
 Una empresa de servicios de Internet quiere hacer una campaña para aplicar entre un 5% y un 25% de
@@ -35,9 +47,8 @@ $$\begin{equation}
 k =\frac{1}{\int_{5}^{25} \ (25 - x) \cdot dx}  \
 \end{equation}$$
 
-```{r}
-integ <- integrate(function(x) (25-x), 5, 25)$value
-integ
+```{r, warning=FALSE}
+maxima("solve ([integrate(k*(25-x), x, 5, 25)= 1], [k])")
 ```
 
 *Luego el valor de k es 1/200 y la función de densidad sería:*
@@ -56,11 +67,10 @@ $$\begin{equation}
 \end{equation}$$
 
 ```{r prob_descuento_mayor_20}
-probabilidad <- integrate(f,20,25)$value
-probabilidad
+maxima("integrate((1/200)*(25-x), x, 20, 25)")
 ```
 
-*La probabilidad de que un cliente obtenga más de un 20% de descuento es de *`r probabilidad` *, es decir, un *`r probabilidad*100`*%.*
+*La probabilidad de que un cliente obtenga más de un 20% de descuento es de 1/16, es decir, un *`r 1/16*100`*%.*
 
 ### 3. ¿Cuál es el descuento medio que se espera aplicar?
 
@@ -77,11 +87,10 @@ $$\begin{equation}
 \end{equation}$$
 
 ```{r}
-esperanza <-integrate(function(x) x*f(x),5,25)$value
-esperanza
+maxima("integrate(x*((1/200)*(25-x)), x, 5, 25)")
 ```
 
-*El descuento medio que se espera será de *`r esperanza`*.*
+*El descuento medio que se espera será de 11.66667.*
 
 ### 4. Calcula la varianza de la variable aleatoria
 
@@ -100,14 +109,17 @@ $$\begin{equation}
 E[X]^2 \Rightarrow (\int_{5}^{25} x \cdot f(x) \cdot dx)^2
 \end{equation}$$
 
+*Simplificando y reemplazando en estas ecuaciones los datos que ya conocemos, obtenemos la ecuación a calcular para obtener el valor buscado: *
+
+$$\begin{equation}
+\int_{5}^{25} x^2·\frac{1}{200}·(25 - x) dx - (35/3) ^ 2
+\end{equation}$$
+
 ```{r}
-Ex2<- integrate(function(x) x^2*f(x),5,25)$value
-Ex_2 <- esperanza^2
-varianza <- Ex2 - Ex_2
-varianza
+maxima("integrate((x^2)*((1/200)*(25-x)), x, 5, 25)  - ((35/3)^2)")
 ```
 
-*Y obtenemos el valor de la varianza: * `r varianza`*.*
+*Y obtenemos el valor de la varianza: 22.22222*
 
 ### 5. ¿Entre qué valores estarán probablemente la mitad de los descuentos realizados (en la zona central de la distribución)?
 
@@ -129,7 +141,9 @@ Var[X] = \sigma^2 \Rightarrow \sigma = \sqrt(Var[X])
 \end{equation}$$
 
 ```{r}
-sigma <- sqrt(varianza)
+varianza=200/9
+esperanza = 35/3 
+sigma = sqrt(varianza)
 ```
 
 
@@ -143,37 +157,57 @@ $$\begin{equation}
 *y realizamos el cálculo:*
 
 ```{r}
-k = 200 / (100*sigma - 4*sigma*esperanza)
-lim_mayor <- esperanza + sigma*k 
-lim_menor <- esperanza - sigma*k
-
-lim_menor
-lim_mayor
+exp = paste("solve ([integrate((1/200)*(25-x), x, ",esperanza,"-",sigma ,"*k, ",esperanza,"+",sigma ,"*k)= 0.5], [k])")
+maxima(exp)
 ```
 
-*El intervalo se comprende entre* `r lim_menor` *y* `r lim_mayor`.
+*y con este valor podemos calcular los límites buscados: *
 
+```{r, warning=FALSE}
+k = 5960539489835381774125/7492867364964968849858
+lim_sup = esperanza + sigma*k
+lim_sup
+lim_inf = esperanza - sigma*k
+lim_inf
+```
+
+*El intervalo se comprende entre* `r lim_inf` *y* `r lim_sup`.
+
+*Veamos como se sitúa esta sección en nuestra función.*
+
+```{r, warning=FALSE}
+density_function <- function(x){ 
+  if (x >= 5 & x <= 25) return((1/200)*(25 - x))
+  else return(0)
+}
+
+plot = ggplot(data.frame(x=c(5,25)), aes(x)) + 
+  stat_function(fun=density_function, geom="line") + 
+  labs(x="Descuento", y="f(x)") + 
+  geom_vline(xintercept = lim_sup, colour="red") + 
+  geom_text(aes(x=lim_sup+1, label="Sup", y=0.05), colour="red") +
+  geom_vline(xintercept = lim_inf, colour="blue") +
+  geom_text(aes(x=lim_inf+1, label="Inf", y=0.05), colour="blue")
+plot
+```
 
 ### 6. ¿Cuál es la moda de la variable aleatoria?
 
 *La definición de moda indica que es el valor para el cual obtenemos el máximo de la función de densidad de la V.A*
 
-*Obtendremos dicho valor de forma gráfica:*
+$$\begin{equation}
+Mo(X) = \max_{x}   f(x)
+\end{equation}$$
 
-```{r, message=FALSE}
-# Importamos bibliotecas y datos
-library(ggplot2)
-```
+*En el gráfico anterior podemos ver como dicho valor es 5.*
+
+*Otra forma de obtener dicho dato es:*
 
 ```{r}
 #definimos un intervalo para la representación
 intervalos <- 0.1
-x_minimo <- 0
-x_maximo <- 30
-y_minimo <- 0 
-y_maximo <- 0.15
-x_limites <-c(x_minimo,x_maximo)
-y_limites <-c(y_minimo,y_maximo)
+x_minimo <- 5
+x_maximo <- 25
 
 #Creamo la lista de intervalos
 seq_valores <- seq(x_minimo, x_maximo, by = intervalos)
@@ -181,34 +215,9 @@ seq_valores <- seq(x_minimo, x_maximo, by = intervalos)
 #Aplicamos función densidad a todo el intervalo
 seq_valores_func <- sapply(seq_valores,f)
 
-#Introducimos los ceros en los intervalos fuera del rango definido en los datos(5 -25)
-seq_valores_func[((0/intervalos)+1):((5/intervalos))] <- 0
-seq_valores_func[((25/intervalos)+1):((30/intervalos)+1)] <- 0
-
 #Creamos DF
 valores <- data.frame(valores_x = seq_valores, f_x= seq_valores_func)
 
-#el grafico de la función de densidad
-f_densidad <- ggplot(valores, aes(valores_x)) +
-  geom_line(aes(y = f_x), colour = "blue", size = 1) +
-  lims(x = x_limites, y = y_limites) + 
-  ggtitle("Función de densidad") + 
-  ylab("f(x)") +  xlab(bquote(~x[i]))
-
-#para la representación del máximo
-valor_max <- max(valores$f_x)
-valores <- data.frame(valores, max_func = valor_max)
-
-f_densidad + 
-  geom_line(aes(y = valores$max_func))
-
-```
-
-*El valor que nos da el máximo y por tanto valor de la moda, sería el 5.*
-
-*Para validar el dato, comprobaremos el resultado en los datos calculados*
-
-```{r}
 pos_vmax <- which(valores$f_x == valor_max)
 moda <- valores$valores_x[pos_vmax]
 moda
