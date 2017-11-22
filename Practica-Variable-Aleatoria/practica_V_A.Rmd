@@ -217,6 +217,7 @@ seq_valores_func <- sapply(seq_valores,f)
 
 #Creamos DF
 valores <- data.frame(valores_x = seq_valores, f_x= seq_valores_func)
+valor_max <- max(valores$f_x)
 
 pos_vmax <- which(valores$f_x == valor_max)
 moda <- valores$valores_x[pos_vmax]
